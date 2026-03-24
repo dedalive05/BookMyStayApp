@@ -1,5 +1,4 @@
-import java.util.LinkedList;
-import java.util.Queue;
+import java.util.*;
 
 public class BookMyStayApp {
 
@@ -21,46 +20,79 @@ public class BookMyStayApp {
         }
     }
 
-    public static class BookingRequestQueue {
-        private Queue<Reservation> requestQueue;
+    public static class RoomInventory {
+        private Map<String, Integer> roomsAvailability = new HashMap<>();
 
-        public BookingRequestQueue() {
-            requestQueue = new LinkedList<>();
+        public RoomInventory() {
+            initializeInventory();
         }
 
-        public void addRequest(Reservation reservation) {
-            requestQueue.offer(reservation);
+        private void initializeInventory() {
+            roomsAvailability.put("Single", 5);
+            roomsAvailability.put("Double", 3);
+            roomsAvailability.put("Suite", 2);
         }
 
-        public Reservation getNextRequest() {
-            return requestQueue.poll();
+        public int getAvailableCount(String roomType) {
+            return roomsAvailability.getOrDefault(roomType, 0);
         }
 
-        public boolean hasPendingRequests() {
-            return !requestQueue.isEmpty();
+        public void reduceAvailability(String roomType) {
+            if (roomsAvailability.containsKey(roomType) && roomsAvailability.get(roomType) > 0) {
+                roomsAvailability.put(roomType, roomsAvailability.get(roomType) - 1);
+            }
         }
     }
 
-    public static class UseCase5BookingRequestQueue {
-        public static void main(String[] args) {
-            System.out.println("Booking Request Queue\n");
+    public static class RoomAllocationService {
+        private Set<String> allocatedRoomIds = new HashSet<>();
+        private Map<String, Set<String>> assignedRoomsByType = new HashMap<>();
 
-            BookingRequestQueue bookingQueue = new BookingRequestQueue();
+        public RoomAllocationService() {
+            assignedRoomsByType.put("Single", new HashSet<>());
+            assignedRoomsByType.put("Double", new HashSet<>());
+            assignedRoomsByType.put("Suite", new HashSet<>());
+        }
+
+        public void allocateRoom(Reservation reservation, RoomInventory inventory) {
+            String roomType = reservation.getRoomType();
+            if (inventory.getAvailableCount(roomType) <= 0) {
+                System.out.println("No rooms available for type: " + roomType);
+                return;
+            }
+
+            String roomId = generateRoomId(roomType);
+            allocatedRoomIds.add(roomId);
+            assignedRoomsByType.get(roomType).add(roomId);
+            inventory.reduceAvailability(roomType);
+
+            System.out.println("Booking confirmed for Guest: " 
+                               + reservation.getGuestName() 
+                               + ", Room ID: " + roomId);
+        }
+
+        private String generateRoomId(String roomType) {
+            int count = assignedRoomsByType.get(roomType).size() + 1;
+            return roomType + "-" + count;
+        }
+    }
+
+    public static class UseCase6RoomAllocation {
+
+        public static void main(String[] args) {
+            System.out.println("Room Allocation Processing\n");
+
+            RoomInventory inventory = new RoomInventory();
+            RoomAllocationService allocationService = new RoomAllocationService();
 
             Reservation r1 = new Reservation("Abhi", "Single");
-            Reservation r2 = new Reservation("Subha", "Double");
+            Reservation r2 = new Reservation("Subha", "Single");
             Reservation r3 = new Reservation("Vansathi", "Suite");
 
-            bookingQueue.addRequest(r1);
-            bookingQueue.addRequest(r2);
-            bookingQueue.addRequest(r3);
+            List<Reservation> requests = Arrays.asList(r1, r2, r3);
 
-            while (bookingQueue.hasPendingRequests()) {
-                Reservation res = bookingQueue.getNextRequest();
-                System.out.println("Processing booking for Guest: " 
-                                   + res.getGuestName() 
-                                   + ", Room Type: " 
-                                   + res.getRoomType());
+            for (Reservation res : requests) {
+                allocationService.allocateRoom(res, inventory);
             }
         }
     }
